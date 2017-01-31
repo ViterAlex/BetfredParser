@@ -5,7 +5,7 @@ VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BetfredParserForms", "BetfredParserForms\BetfredParserForms.csproj", "{D333CCC9-7971-4967-9353-F1183B49101C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BetfredParserWpf", "BetfredParserWpf\BetfredParserWpf.csproj", "{EE8D1659-10E5-4B00-B67C-0C289771A5E1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Betfred", "Betfred\Betfred.csproj", "{39A9000D-0CD2-41B5-B96D-6EFD4CE6FB6B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,18 +13,14 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{06463CAD-0F02-4E6B-A86D-44C958A32DDA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{06463CAD-0F02-4E6B-A86D-44C958A32DDA}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{06463CAD-0F02-4E6B-A86D-44C958A32DDA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{06463CAD-0F02-4E6B-A86D-44C958A32DDA}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D333CCC9-7971-4967-9353-F1183B49101C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D333CCC9-7971-4967-9353-F1183B49101C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D333CCC9-7971-4967-9353-F1183B49101C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D333CCC9-7971-4967-9353-F1183B49101C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{EE8D1659-10E5-4B00-B67C-0C289771A5E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EE8D1659-10E5-4B00-B67C-0C289771A5E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EE8D1659-10E5-4B00-B67C-0C289771A5E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EE8D1659-10E5-4B00-B67C-0C289771A5E1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{39A9000D-0CD2-41B5-B96D-6EFD4CE6FB6B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{39A9000D-0CD2-41B5-B96D-6EFD4CE6FB6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{39A9000D-0CD2-41B5-B96D-6EFD4CE6FB6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{39A9000D-0CD2-41B5-B96D-6EFD4CE6FB6B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
