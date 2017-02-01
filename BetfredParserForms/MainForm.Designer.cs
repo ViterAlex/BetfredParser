@@ -30,6 +30,7 @@
         {
             this.components = new System.ComponentModel.Container();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             this.fromDateTimePicker = new System.Windows.Forms.DateTimePicker();
             this.toDateTimePicker = new System.Windows.Forms.DateTimePicker();
             this.loadResultsButton = new System.Windows.Forms.Button();
@@ -41,7 +42,10 @@
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
             this.tableLayoutPanel2 = new System.Windows.Forms.TableLayoutPanel();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
+            this.imageStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             this.proxyEnumStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.countStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
+            this.elapsedStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             ((System.ComponentModel.ISupportInitialize)(this.bindingSource1)).BeginInit();
             this.tableLayoutPanel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
@@ -139,6 +143,7 @@
             // 
             this.dataGridView1.AllowUserToAddRows = false;
             this.dataGridView1.AllowUserToDeleteRows = false;
+            this.dataGridView1.AllowUserToResizeRows = false;
             dataGridViewCellStyle1.BackColor = System.Drawing.Color.Silver;
             this.dataGridView1.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle1;
             this.dataGridView1.AutoGenerateColumns = false;
@@ -153,7 +158,7 @@
             this.dataGridView1.RowHeadersVisible = false;
             this.tableLayoutPanel2.SetRowSpan(this.dataGridView1, 2);
             this.dataGridView1.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dataGridView1.Size = new System.Drawing.Size(341, 402);
+            this.dataGridView1.Size = new System.Drawing.Size(612, 402);
             this.dataGridView1.TabIndex = 5;
             this.dataGridView1.ColumnAdded += new System.Windows.Forms.DataGridViewColumnEventHandler(this.dataGridView1_ColumnAdded);
             // 
@@ -171,32 +176,60 @@
             this.tableLayoutPanel2.RowCount = 2;
             this.tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle());
             this.tableLayoutPanel2.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel2.Size = new System.Drawing.Size(612, 427);
+            this.tableLayoutPanel2.Size = new System.Drawing.Size(883, 427);
             this.tableLayoutPanel2.TabIndex = 6;
             // 
             // statusStrip1
             // 
             this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.proxyEnumStatusLabel});
+            this.imageStatusLabel,
+            this.proxyEnumStatusLabel,
+            this.elapsedStatusLabel,
+            this.countStatusLabel});
             this.statusStrip1.Location = new System.Drawing.Point(0, 405);
             this.statusStrip1.Name = "statusStrip1";
-            this.statusStrip1.Size = new System.Drawing.Size(612, 22);
+            this.statusStrip1.Size = new System.Drawing.Size(883, 22);
             this.statusStrip1.TabIndex = 7;
             this.statusStrip1.Text = "statusStrip1";
+            // 
+            // imageStatusLabel
+            // 
+            this.imageStatusLabel.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Image;
+            this.imageStatusLabel.Image = global::BetfredParserForms.Properties.Resources.Ok;
+            this.imageStatusLabel.ImageTransparentColor = System.Drawing.Color.Black;
+            this.imageStatusLabel.Name = "imageStatusLabel";
+            this.imageStatusLabel.Size = new System.Drawing.Size(16, 17);
+            this.imageStatusLabel.Visible = false;
             // 
             // proxyEnumStatusLabel
             // 
             this.proxyEnumStatusLabel.Name = "proxyEnumStatusLabel";
-            this.proxyEnumStatusLabel.Size = new System.Drawing.Size(127, 17);
+            this.proxyEnumStatusLabel.Size = new System.Drawing.Size(404, 17);
+            this.proxyEnumStatusLabel.Spring = true;
             this.proxyEnumStatusLabel.Text = "proxyEnumStatusLabel";
+            this.proxyEnumStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            // 
+            // countStatusLabel
+            // 
+            this.countStatusLabel.Name = "countStatusLabel";
+            this.countStatusLabel.Size = new System.Drawing.Size(13, 17);
+            this.countStatusLabel.Text = "0";
+            // 
+            // elapsedStatusLabel
+            // 
+            this.elapsedStatusLabel.Name = "elapsedStatusLabel";
+            this.elapsedStatusLabel.Size = new System.Drawing.Size(404, 17);
+            this.elapsedStatusLabel.Spring = true;
+            this.elapsedStatusLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(612, 427);
+            this.ClientSize = new System.Drawing.Size(883, 427);
             this.Controls.Add(this.statusStrip1);
             this.Controls.Add(this.tableLayoutPanel2);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "MainForm";
             this.Text = "Betfred.com";
             ((System.ComponentModel.ISupportInitialize)(this.bindingSource1)).EndInit();
@@ -225,6 +258,9 @@
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel2;
         private System.Windows.Forms.StatusStrip statusStrip1;
         private System.Windows.Forms.ToolStripStatusLabel proxyEnumStatusLabel;
+        private System.Windows.Forms.ToolStripStatusLabel imageStatusLabel;
+        private System.Windows.Forms.ToolStripStatusLabel countStatusLabel;
+        private System.Windows.Forms.ToolStripStatusLabel elapsedStatusLabel;
     }
 }
 
