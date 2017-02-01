@@ -40,10 +40,13 @@
             this.label2 = new System.Windows.Forms.Label();
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
             this.tableLayoutPanel2 = new System.Windows.Forms.TableLayoutPanel();
+            this.statusStrip1 = new System.Windows.Forms.StatusStrip();
+            this.proxyEnumStatusLabel = new System.Windows.Forms.ToolStripStatusLabel();
             ((System.ComponentModel.ISupportInitialize)(this.bindingSource1)).BeginInit();
             this.tableLayoutPanel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).BeginInit();
             this.tableLayoutPanel2.SuspendLayout();
+            this.statusStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
             // fromDateTimePicker
@@ -84,8 +87,9 @@
             this.listBox1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.listBox1.FormattingEnabled = true;
             this.listBox1.Location = new System.Drawing.Point(3, 68);
+            this.listBox1.Margin = new System.Windows.Forms.Padding(3, 3, 3, 22);
             this.listBox1.Name = "listBox1";
-            this.listBox1.Size = new System.Drawing.Size(259, 356);
+            this.listBox1.Size = new System.Drawing.Size(259, 337);
             this.listBox1.TabIndex = 3;
             // 
             // tableLayoutPanel1
@@ -143,12 +147,13 @@
             this.dataGridView1.DataSource = this.bindingSource1;
             this.dataGridView1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.dataGridView1.Location = new System.Drawing.Point(268, 3);
+            this.dataGridView1.Margin = new System.Windows.Forms.Padding(3, 3, 3, 22);
             this.dataGridView1.Name = "dataGridView1";
             this.dataGridView1.ReadOnly = true;
             this.dataGridView1.RowHeadersVisible = false;
             this.tableLayoutPanel2.SetRowSpan(this.dataGridView1, 2);
             this.dataGridView1.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dataGridView1.Size = new System.Drawing.Size(341, 421);
+            this.dataGridView1.Size = new System.Drawing.Size(341, 402);
             this.dataGridView1.TabIndex = 5;
             this.dataGridView1.ColumnAdded += new System.Windows.Forms.DataGridViewColumnEventHandler(this.dataGridView1_ColumnAdded);
             // 
@@ -169,11 +174,28 @@
             this.tableLayoutPanel2.Size = new System.Drawing.Size(612, 427);
             this.tableLayoutPanel2.TabIndex = 6;
             // 
+            // statusStrip1
+            // 
+            this.statusStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.proxyEnumStatusLabel});
+            this.statusStrip1.Location = new System.Drawing.Point(0, 405);
+            this.statusStrip1.Name = "statusStrip1";
+            this.statusStrip1.Size = new System.Drawing.Size(612, 22);
+            this.statusStrip1.TabIndex = 7;
+            this.statusStrip1.Text = "statusStrip1";
+            // 
+            // proxyEnumStatusLabel
+            // 
+            this.proxyEnumStatusLabel.Name = "proxyEnumStatusLabel";
+            this.proxyEnumStatusLabel.Size = new System.Drawing.Size(127, 17);
+            this.proxyEnumStatusLabel.Text = "proxyEnumStatusLabel";
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(612, 427);
+            this.Controls.Add(this.statusStrip1);
             this.Controls.Add(this.tableLayoutPanel2);
             this.Name = "MainForm";
             this.Text = "Betfred.com";
@@ -182,7 +204,10 @@
             this.tableLayoutPanel1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
             this.tableLayoutPanel2.ResumeLayout(false);
+            this.statusStrip1.ResumeLayout(false);
+            this.statusStrip1.PerformLayout();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -198,6 +223,8 @@
         private System.Windows.Forms.BindingSource bindingSource1;
         private System.Windows.Forms.DataGridView dataGridView1;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel2;
+        private System.Windows.Forms.StatusStrip statusStrip1;
+        private System.Windows.Forms.ToolStripStatusLabel proxyEnumStatusLabel;
     }
 }
 

@@ -1,120 +1,179 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Net;
-using System.Text;
+using System.Threading;
 using System.Windows.Forms;
-using HtmlAgilityPack;
 using HtmlDocument = HtmlAgilityPack.HtmlDocument;
 
 namespace BetfredParserForms
 {
     public partial class MainForm : Form
     {
+        #region Свойства
+
+        private List<WebProxy> _proxies;
+        private Thread _proxyEnum;
+
+        #endregion
+
         public MainForm()
         {
             InitializeComponent();
-            Load += Form1_Load;
             dataGridView1.AutoGenerateColumns = true;
+            proxyEnumStatusLabel.Text = string.Empty;
         }
 
-        private void Form1_Load(object sender, EventArgs e)
+        //Соединение через определённый прокси.
+        private bool ConnectViaProxy(WebProxy proxy)
         {
-            _browser = new WebBrowser();
-            _browser.DocumentCompleted += Browser_DocumentCompleted;
+            //строка отправляемая в POST-запросе
+            var postData = string.Format(
+                "nDayFrom={0}&" +
+                "nMonthfrom={1}&" +
+                "nYearfrom={2}&" +
+                "nDayto={3}&" +
+                "nMonthto={4}&" +
+                "nYearto={5}&" +
+                "xSubmit=Find+draws&slng=SIS49",
+                fromDateTimePicker.Value.Day,
+                fromDateTimePicker.Value.Month,
+                fromDateTimePicker.Value.Year,
+                toDateTimePicker.Value.Day,
+                toDateTimePicker.Value.Month,
+                toDateTimePicker.Value.Year);
+            var req = (HttpWebRequest)WebRequest.Create("http://webmon9.betfred.com/numbers/results/index.asp");
+            req.ContentType = "application/x-www-form-urlencoded";
+            req.Method = "POST";
+            req.Proxy = proxy;
+            try
+            {
+                using (var stream = new StreamWriter(req.GetRequestStream()))
+                {
+                    stream.Write(postData);
+                }
+                var resp = (HttpWebResponse)req.GetResponse();
+                proxyEnumStatusLabel.Text = string.Format("Соединение удалось через {0}.", proxy.Address);
+                using (var stream = new StreamReader(resp.GetResponseStream()))
+                {
+                    var html = stream.ReadToEnd();
+                    this.InvokeEx(() => ParsePage(html));
+                }
+                return true;
+            }
+            catch (WebException)
+            {
+                Debug.WriteLine("Wrong: {0}", proxy.Address);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+            }
+            return false;
         }
 
-        private WebBrowser _browser;
+        //Формат столбцов таблицы
+        private void dataGridView1_ColumnAdded(object sender, DataGridViewColumnEventArgs e)
+        {
+            if (e.Column.DataPropertyName == "Booster" || e.Column.DataPropertyName == "Draw")
+                e.Column.DefaultCellStyle.Format = "D2";
+            if (e.Column.DataPropertyName == "Booster")
+                e.Column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            if (e.Column.DataPropertyName == "Date")
+                e.Column.DefaultCellStyle.Format = "dd.MM.yyyy";
+        }
+
+        //Перебор прокси-серверов.
+        private void EnumProxies()
+        {
+            //Пытаемся соединиться через успешный прокси.
+            //Поначалу предполагаем, что это первый в списке
+            proxyEnumStatusLabel.Text = string.Format("Попытка соединиться через {0}.", _proxies[0].Address);
+            if (ConnectViaProxy(_proxies[0]))
+                return;
+            //Если не получилось, то перебираем весь список
+            var n = 0;
+            this.InvokeEx(() => TaskbarProgress.SetState(Handle, TaskbarStates.Normal));
+
+            for (var i = 1; i < _proxies.Count; i++)
+            {
+                var proxy = _proxies[i];
+                this.InvokeEx(() => TaskbarProgress.SetValue(this.Handle, i + 1, _proxies.Count));
+                proxyEnumStatusLabel.Text = string.Format(
+                    "Попытка соединиться через {0}. {1} из {2}", proxy.Address, i + 1, _proxies.Count);
+                if (ConnectViaProxy(proxy))
+                {
+                    var p = proxy;
+                    _proxies.Remove(proxy);
+                    _proxies.Insert(0, p);
+                    return;
+                }
+            }
+        }
+
+        //Загрузка списка прокси-серверов из файла "proxy.txt"
+        private static List<WebProxy> GetProxies()
+        {
+            var fullpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "proxy.txt");
+            if (!File.Exists(fullpath))
+                throw new FileNotFoundException(fullpath);
+            List<WebProxy> webProxies = new List<WebProxy>();
+            using (var reader = new StreamReader(fullpath))
+            {
+                while (!reader.EndOfStream)
+                {
+                    var line = reader.ReadLine();
+                    if (string.IsNullOrEmpty(line))
+                        continue;
+                    if (line.IndexOf(':') != -1)
+                    {
+                        string[] parts = line.Split(':');
+                        webProxies.Add(new WebProxy(parts[0], int.Parse(parts[1])));
+                    }
+                    else
+                    {
+                        webProxies.Add(new WebProxy(line));
+                    }
+                }
+            }
+            return webProxies;
+        }
 
         private void loadResultsButton_Click(object sender, EventArgs e)
         {
-            //строка отправляемая в POST-запросе
-            var postData = string.Format("nDayFrom={0}&" +
-                                        "nMonthfrom={1}&" +
-                                        "nYearfrom={2}&" +
-                                        "nDayto={3}&" +
-                                        "nMonthto={4}&" +
-                                        "nYearto={5}&" +
-                                        "xSubmit=Find+draws&slng=SIS49",
-                                        fromDateTimePicker.Value.Day,
-                                        fromDateTimePicker.Value.Month,
-                                        fromDateTimePicker.Value.Year,
-                                        toDateTimePicker.Value.Day,
-                                        toDateTimePicker.Value.Month,
-                                        toDateTimePicker.Value.Year);
-            var req = (HttpWebRequest)WebRequest.Create("http://webmon9.betfred.com/numbers/results/index.asp");
-            req.Proxy= new WebProxy("46.19.93.212", 8080);
-            req.ContentType = "application/x-www-form-urlencoded";
-            req.Method = "GET";
-            var resp = (HttpWebResponse)req.GetResponse();
-            //_browser.Navigate(new Uri("http://webmon9.betfred.com/numbers/results/index.asp"),
-            //    string.Empty,
-            //    Encoding.UTF8.GetBytes(postData),
-            //    "Content-Type: application/x-www-form-urlencoded");
+            _proxies = GetProxies();
+            _proxyEnum = new Thread(EnumProxies);
+            _proxyEnum.Start();
         }
 
-        private void Browser_DocumentCompleted(object sender, WebBrowserDocumentCompletedEventArgs e)
+        #region Overrides of Form
+
+        protected override void OnClosed(EventArgs e)
         {
-            ParsePage(_browser.DocumentText);
+            if (_proxyEnum != null && _proxyEnum.IsAlive)
+                _proxyEnum.Abort();
+            SaveProxies();
+
+            base.OnClosed(e);
         }
 
-        private void ParsePage(string pageHtml)
-        {
-            var doc = new HtmlDocument();
-            doc.LoadHtml(pageHtml);
-            bindingSource1.Clear();
-            //Выбор всех элементов страницы, содержащих даты и результаты
-            HtmlNodeCollection nodes = doc.DocumentNode.SelectNodes("//tr[starts-with(@class,'row') or @class = 'tableheading']");
-            DateTime drawDate = toDateTimePicker.Value;
-            var i = 0;
-            do
-            {
-                HtmlNode node = nodes[i];
-                //Пропуск узлов с классом, отличным от tableheading
-                if (!node.GetAttributeValue("class", "").Equals("tableheading")) continue;
-                //Выбираем узел с датой из tableheading по атрибуту colspan
-                ParseDate(node.SelectSingleNode("./th[@colspan]").InnerText,
-                    drawDate.Year,
-                    fromDateTimePicker.Value.Year,
-                    out drawDate);
-                //Следующий узел. Это следующая строка таблицы
-                node = nodes[++i];
-                //Проверяем первую строку с первым результатом. У неё должен быть класс row0
-                if (node.GetAttributeValue("class", "").StartsWith("row0"))
-                {
-                    bindingSource1.Add(new BetfredResult(PrepareLineForParsing(node.InnerText), drawDate));
-                }
-                //Следующий узел. Это следующая строка таблицы
-                node = nodes[++i];
-                //Проверяем первую строку со вторым результатом. У неё должен быть класс row1
-                if (node.GetAttributeValue("class", "").StartsWith("row1"))
-                {
-                    bindingSource1.Add(new BetfredResult(PrepareLineForParsing(node.InnerText), drawDate));
-                }
-            } while (++i < nodes.Count);
-        }
+        #endregion
+
         /// <summary>
-        /// Подготовка строки из html к парсингу
-        /// </summary>
-        /// <param name="htmlLine">Строка из html</param>
-        /// <returns>Возвращает строку вида 00 — 00 00 00 00 00 00 00</returns>
-        private string PrepareLineForParsing(string htmlLine)
-        {
-            //Удаление переносов строк
-            var line = htmlLine.Replace("\r\n", " ");
-            //Удаление лишнего текста и пробелов
-            line = line.Replace(" Draw ", string.Empty).Replace("  ", " ");
-            //Вставка дефиса после первых двух символов в строке
-            return line.Insert(2, " —");
-        }
-        /// <summary>
-        /// Парсинг даты, полученной с сайта
+        ///     Парсинг даты, полученной с сайта
         /// </summary>
         /// <param name="innerText">Строка с датой вида dddd d MMMM</param>
         /// <param name="year">Год для данной даты</param>
         /// <param name="minYear">Самый ранний год, для которого ищется дата</param>
         /// <param name="date">Переменная в которую записывается результат</param>
-        /// <remarks>Дата вида "Wednesday 5th October" не содержит года, поэтому используется <paramref name="year"/> для указания года искомой даты.
-        /// Если указанный год не подходит, то он уменьшается и подбор осуществляется снова, пока год не подойдёт или не будет достигнут <paramref name="minYear"/></remarks>
+        /// <remarks>
+        ///     Дата вида "Wednesday 5th October" не содержит года, поэтому используется <paramref name="year" /> для указания года
+        ///     искомой даты.
+        ///     Если указанный год не подходит, то он уменьшается и подбор осуществляется снова, пока год не подойдёт или не будет
+        ///     достигнут <paramref name="minYear" />
+        /// </remarks>
         private void ParseDate(string innerText, int year, int minYear, out DateTime date)
         {
             var ci = new CultureInfo("en-US");
@@ -139,20 +198,73 @@ namespace BetfredParserForms
                 if (year < minYear) return;
             } while (true);
         }
-        //Формат столбцов таблицы
-        private void dataGridView1_ColumnAdded(object sender, DataGridViewColumnEventArgs e)
+
+        private void ParsePage(string pageHtml)
         {
-            if (e.Column.DataPropertyName == "Booster" || e.Column.DataPropertyName == "Draw")
+            TaskbarProgress.SetState(this.Handle, TaskbarStates.Indeterminate);
+            var doc = new HtmlDocument();
+            doc.LoadHtml(pageHtml);
+            bindingSource1.Clear();
+            //Выбор всех элементов страницы, содержащих даты и результаты
+            var nodes = doc.DocumentNode.SelectNodes("//tr[starts-with(@class,'row') or @class = 'tableheading']");
+            var drawDate = toDateTimePicker.Value;
+            var i = 0;
+            do
             {
-                e.Column.DefaultCellStyle.Format = "D2";
+                var node = nodes[i];
+                //Пропуск узлов с классом, отличным от tableheading
+                if (!node.GetAttributeValue("class", "").Equals("tableheading")) continue;
+                //Выбираем узел с датой из tableheading по атрибуту colspan
+                ParseDate(
+                    node.SelectSingleNode("./th[@colspan]").InnerText,
+                    drawDate.Year,
+                    fromDateTimePicker.Value.Year,
+                    out drawDate);
+                //Следующий узел. Это следующая строка таблицы
+                node = nodes[++i];
+                //Проверяем первую строку с первым результатом. У неё должен быть класс row0
+                if (node.GetAttributeValue("class", "").StartsWith("row0"))
+                    bindingSource1.Add(new BetfredResult(PrepareLineForParsing(node.InnerText), drawDate));
+                //Следующий узел. Это следующая строка таблицы
+                node = nodes[++i];
+                //Проверяем первую строку со вторым результатом. У неё должен быть класс row1
+                if (node.GetAttributeValue("class", "").StartsWith("row1"))
+                    bindingSource1.Add(new BetfredResult(PrepareLineForParsing(node.InnerText), drawDate));
+                Application.DoEvents();
+            } while (++i < nodes.Count);
+            TaskbarProgress.SetState(this.Handle, TaskbarStates.NoProgress);
+        }
+
+        /// <summary>
+        ///     Подготовка строки из html к парсингу
+        /// </summary>
+        /// <param name="htmlLine">Строка из html</param>
+        /// <returns>Возвращает строку вида 00 — 00 00 00 00 00 00 00</returns>
+        private string PrepareLineForParsing(string htmlLine)
+        {
+            //Удаление переносов строк
+            var line = htmlLine.Replace("\r\n", " ");
+            //Удаление лишнего текста и пробелов
+            line = line.Replace(" Draw ", string.Empty).Replace("  ", " ");
+            //Вставка дефиса после первых двух символов в строке
+            return line.Insert(2, " —");
+        }
+
+        //Переписываем список прокси. Последний успешный прокси записывается первым.
+        private void SaveProxies()
+        {
+            if (_proxies == null)
+            {
+                return;
             }
-            if (e.Column.DataPropertyName == "Booster")
+            var fullpath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "proxy.txt");
+            using (var stream = new StreamWriter(fullpath))
             {
-                e.Column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-            }
-            if (e.Column.DataPropertyName == "Date")
-            {
-                e.Column.DefaultCellStyle.Format = "dd.MM.yyyy";
+                foreach (var proxy in _proxies)
+                {
+                    var address = proxy.Address.ToString();
+                    stream.WriteLine(address.Substring(address.LastIndexOf("//") + 1).Replace("/",""));
+                }
             }
         }
     }
