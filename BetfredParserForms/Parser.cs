@@ -1,14 +1,37 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Text;
 using HtmlAgilityPack;
 
 namespace BetfredParserForms
 {
     internal class Parser
     {
+        #region Свойства
+
+        private readonly DateTime _startDate;
+        private DateTime _endDate;
+        #endregion
+
+        /// <summary>
+        ///     Конструктор парсера
+        /// </summary>
+        /// <param name="startDate">Начальная дата для дат на странице</param>
+        /// <param name="endDate">Предполагаемая конечная дата</param>
+        public Parser(DateTime startDate, DateTime endDate)
+        {
+            _startDate = startDate;
+            _endDate = endDate;
+        }
+
+        public event EventHandler<BetfredParserEventArgs> NewResult;
+
+        protected virtual void OnNewResult(BetfredParserEventArgs e)
+        {
+            EventHandler<BetfredParserEventArgs> handler = NewResult;
+            if (handler != null) handler(this, e);
+        }
+
         /// <summary>
         ///     Парсинг даты, полученной с сайта
         /// </summary>
@@ -47,49 +70,6 @@ namespace BetfredParserForms
             } while (true);
         }
 
-        /// <summary>
-        ///     Подготовка строки из html к парсингу
-        /// </summary>
-        /// <param name="htmlLine">Строка из html</param>
-        /// <returns>Возвращает строку вида 00 — 00 00 00 00 00 00 00</returns>
-        private static string PrepareLineForParsing(string htmlLine)
-        {
-            //Удаление переносов строк
-            var line = htmlLine.Replace("\r\n", " ");
-            //Удаление лишнего текста и пробелов
-            line = line.Replace(" Draw ", string.Empty).Replace("  ", " ");
-            //Вставка дефиса после первых двух символов в строке
-            return line.Insert(2, " —");
-        }
-
-        /// <summary>
-        /// Конструктор парсера
-        /// </summary>
-        /// <param name="startDate">Начальная дата для дат на странице</param>
-        /// <param name="endDate">Предполагаемая конечная дата</param>
-        public Parser(DateTime startDate, DateTime endDate)
-        {
-            _startDate = startDate;
-            _endDate = endDate;
-        }
-
-        public event EventHandler<BetfredParserEventArgs> NewResult;
-
-        private readonly DateTime _startDate;
-        private DateTime _endDate;
-
-        public DateTime EndDate
-        {
-            get
-            {
-                return _endDate;
-            }
-            set
-            {
-                _endDate = value;
-            }
-        }
-
 
         public void ParsePage(string pageHtml)
         {
@@ -113,19 +93,30 @@ namespace BetfredParserForms
                 node = nodes[++i];
                 //Проверяем первую строку с первым результатом. У неё должен быть класс row0
                 if (node.GetAttributeValue("class", "").StartsWith("row0"))
-                    OnNewResult(new BetfredParserEventArgs(new BetfredResult(PrepareLineForParsing(node.InnerText), _endDate)));
+                    OnNewResult(
+                        new BetfredParserEventArgs(new BetfredResult(PrepareLineForParsing(node.InnerText), _endDate)));
                 //Следующий узел. Это следующая строка таблицы
                 node = nodes[++i];
                 //Проверяем первую строку со вторым результатом. У неё должен быть класс row1
                 if (node.GetAttributeValue("class", "").StartsWith("row1"))
-                    OnNewResult(new BetfredParserEventArgs(new BetfredResult(PrepareLineForParsing(node.InnerText), _endDate)));
+                    OnNewResult(
+                        new BetfredParserEventArgs(new BetfredResult(PrepareLineForParsing(node.InnerText), _endDate)));
             } while (++i < nodes.Count());
         }
 
-        protected virtual void OnNewResult(BetfredParserEventArgs e)
+        /// <summary>
+        ///     Подготовка строки из html к парсингу
+        /// </summary>
+        /// <param name="htmlLine">Строка из html</param>
+        /// <returns>Возвращает строку вида 00 — 00 00 00 00 00 00 00</returns>
+        private static string PrepareLineForParsing(string htmlLine)
         {
-            EventHandler<BetfredParserEventArgs> handler = NewResult;
-            if (handler != null) handler(this, e);
+            //Удаление переносов строк
+            var line = htmlLine.Replace("\r\n", " ");
+            //Удаление лишнего текста и пробелов
+            line = line.Replace(" Draw ", string.Empty).Replace("  ", " ");
+            //Вставка дефиса после первых двух символов в строке
+            return line.Insert(2, " —");
         }
     }
 }

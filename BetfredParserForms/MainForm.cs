@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Threading;
+using System.Timers;
 using System.Windows.Forms;
 using Timer = System.Timers.Timer;
 
@@ -13,12 +13,13 @@ namespace BetfredParserForms
     {
         #region Свойства
 
-        //строка отправляемая в POST-запросе
-        private string _postData;
-        private DateTime _starTime;
         private List<WebProxy> _proxies;
-        private Thread _proxyEnum;
+        private Thread _proxyEnumThread;
+
+        //строка отправляемая в POST-запросе
+        private DateTime _starTime;
         private Timer _timer;
+
         #endregion
 
         public MainForm()
@@ -28,6 +29,12 @@ namespace BetfredParserForms
             proxyEnumStatusLabel.Text = string.Empty;
         }
 
+        //Таймер отсчёта времени
+        private void _timer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            elapsedStatusLabel.Text = (_starTime - e.SignalTime).ToString(@"hh\:mm\:ss");
+        }
+
         private void AbortThread()
         {
             if (_timer != null)
@@ -35,40 +42,26 @@ namespace BetfredParserForms
                 _timer.Stop();
                 _timer.Dispose();
             }
-            if (_proxyEnum != null && _proxyEnum.IsAlive)
-                _proxyEnum.Abort();
+            if (_proxyEnumThread != null && _proxyEnumThread.IsAlive)
+                _proxyEnumThread.Abort();
         }
 
-        //Соединение через определённый прокси.
-        private bool ConnectViaProxy(WebProxy proxy)
+        //Пробуем загрузить страницу или перебрать адреса прокси
+        private void LoadPageOrEnumProxies()
         {
-            var req = (HttpWebRequest)WebRequest.Create("http://webmon9.betfred.com/numbers/results/index.asp");
-            req.ContentType = "application/x-www-form-urlencoded";
-            req.Method = "POST";
-            req.Proxy = proxy;
-            try
-            {
-                using (var stream = new StreamWriter(req.GetRequestStream()))
-                {
-                    stream.Write(_postData);
-                }
-                var resp = (HttpWebResponse)req.GetResponse();
-                using (var stream = new StreamReader(resp.GetResponseStream()))
-                {
-                    var html = stream.ReadToEnd();
-                    this.InvokeEx(() => StartParsing(html));
-                }
-                return true;
-            }
-            catch (WebException)
-            {
-                Debug.WriteLine("Wrong: {0}", proxy.Address);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex.Message);
-            }
-            return false;
+            this.InvokeEx(() => TaskbarProgress.SetState(Handle, TaskbarStates.Indeterminate));
+            proxyEnumStatusLabel.Text = string.Format("Попытка соединиться через {0}.", _proxies[0].Address);
+            //Если удалось загрузить через первый прокси.
+            if (LoadPage()) return;
+            this.InvokeEx(() => TaskbarProgress.SetState(Handle, TaskbarStates.Normal));
+            //Если не удалось — начинается перебор адресов.
+            var proxyEnum = new ProxyEnumerator(
+                _proxies, new Uri("http://www.betfred.com"));
+            proxyEnum.ProxyFound += ProxyEnum_ProxyFound;
+            proxyEnum.NextProxy += ProxyEnum_NextProxy;
+            proxyEnum.EnumProxies();
+            proxyEnum.ProxyFound -= ProxyEnum_ProxyFound;
+            proxyEnum.NextProxy -= ProxyEnum_NextProxy;
         }
 
         //Формат столбцов таблицы
@@ -80,34 +73,6 @@ namespace BetfredParserForms
                 e.Column.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
             if (e.Column.DataPropertyName == "Date")
                 e.Column.DefaultCellStyle.Format = "dd.MM.yyyy";
-        }
-
-        //Перебор прокси-серверов.
-        private void EnumProxies()
-        {
-            this.InvokeEx(() => TaskbarProgress.SetState(Handle, TaskbarStates.Indeterminate));
-            //Пытаемся соединиться через успешный прокси.
-            //Поначалу предполагаем, что это первый в списке
-            proxyEnumStatusLabel.Text = string.Format("Попытка соединиться через {0}.", _proxies[0].Address);
-            if (ConnectViaProxy(_proxies[0]))
-                return;
-            //Если не получилось, то перебираем весь список
-            this.InvokeEx(() => TaskbarProgress.SetState(Handle, TaskbarStates.Normal));
-
-            for (var i = 1; i < _proxies.Count; i++)
-            {
-                var proxy = _proxies[i];
-                this.InvokeEx(() => TaskbarProgress.SetValue(Handle, i + 1, _proxies.Count));
-                proxyEnumStatusLabel.Text = string.Format(
-                    "Попытка соединиться через {0}. {1} из {2}", proxy.Address, i + 1, _proxies.Count);
-                if (ConnectViaProxy(proxy))
-                {
-                    var p = proxy;
-                    _proxies.Remove(proxy);
-                    _proxies.Insert(0, p);
-                    return;
-                }
-            }
         }
 
         //Загрузка списка прокси-серверов из файла "proxy.txt"
@@ -138,11 +103,14 @@ namespace BetfredParserForms
             return webProxies;
         }
 
-        private void loadResultsButton_Click(object sender, EventArgs e)
+        //Загрузка страницы
+        private bool LoadPage()
         {
-            loadResultsButton.Enabled = false;
-            imageStatusLabel.Visible = false;
-            _postData = string.Format(
+            var req = (HttpWebRequest) WebRequest.Create("http://webmon9.betfred.com/numbers/results/index.asp");
+            req.ContentType = "application/x-www-form-urlencoded";
+            req.Method = "POST";
+            req.Proxy = _proxies[0];
+            var postData = string.Format(
                 "nDayFrom={0}&" +
                 "nMonthfrom={1}&" +
                 "nYearfrom={2}&" +
@@ -156,18 +124,39 @@ namespace BetfredParserForms
                 toDateTimePicker.Value.Day,
                 toDateTimePicker.Value.Month,
                 toDateTimePicker.Value.Year);
+            try
+            {
+                using (var stream = new StreamWriter(req.GetRequestStream()))
+                {
+                    stream.Write(postData);
+                }
+                var resp = (HttpWebResponse)req.GetResponse();
+                using (var stream = new StreamReader(resp.GetResponseStream()))
+                {
+                    StartParsing(stream.ReadToEnd());
+                }
+            }
+            catch (WebException)
+            {
+                return false;
+            }
+            return true;
+        }
+
+        private void loadResultsButton_Click(object sender, EventArgs e)
+        {
+            loadResultsButton.Enabled = false;
+            imageStatusLabel.Visible = false;
             _proxies = GetProxies();
-            _proxyEnum = new Thread(EnumProxies);
+
+            _proxyEnumThread = new Thread(LoadPageOrEnumProxies);
+
             _timer = new Timer(200);
             _timer.Elapsed += _timer_Elapsed;
             _starTime = DateTime.Now;
-            _timer.Start();
-            _proxyEnum.Start();
-        }
 
-        private void _timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
-        {
-            elapsedStatusLabel.Text = (_starTime - e.SignalTime).ToString(@"hh\:mm\:ss");
+            _timer.Start();
+            _proxyEnumThread.Start();
         }
 
         #region Overrides of Form
@@ -185,6 +174,20 @@ namespace BetfredParserForms
             bindingSource1.Add(e.Result);
             countStatusLabel.Text = bindingSource1.Count.ToString();
             Application.DoEvents();
+        }
+
+        private void ProxyEnum_NextProxy(object sender, ProxyEnumeratorEventArgs e)
+        {
+            this.InvokeEx(() => TaskbarProgress.SetValue(Handle, e.Index + 1, e.Count));
+            proxyEnumStatusLabel.Text = string.Format("Попытка соединиться через {0}. {1} из {2}", e.Proxy.Address, e.Index, e.Count);
+        }
+
+        private void ProxyEnum_ProxyFound(object sender, ProxyEnumeratorEventArgs e)
+        {
+            var p = _proxies[e.Index];
+            _proxies.RemoveAt(e.Index);
+            _proxies.Insert(0, p);
+            LoadPage();
         }
 
         //Переписываем список прокси. Последний успешный прокси записывается первым.
