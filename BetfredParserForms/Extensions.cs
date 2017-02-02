@@ -16,18 +16,5 @@ namespace BetfredParserForms
             else
                 action.Invoke();
         }
-
-        /// <summary>Проверка, что строка не пустая.</summary>
-        /// <param name="value">Строковая переменная</param>
-        public static bool IsNullOrEmpty(this string value)
-        {
-            return string.IsNullOrEmpty(value);
-        }
-
-
-        public static double NextDouble(this Random rnd, double min, double max)
-        {
-            return rnd.NextDouble() * (max - min) + min;
-        }
     }
 }
