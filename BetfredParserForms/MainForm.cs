@@ -29,21 +29,21 @@ namespace BetfredParserForms
             proxyEnumStatusLabel.Text = string.Empty;
         }
 
+        public event EventHandler PageLoaded;
+
         //Таймер отсчёта времени
         private void _timer_Elapsed(object sender, ElapsedEventArgs e)
         {
             elapsedStatusLabel.Text = (_starTime - e.SignalTime).ToString(@"hh\:mm\:ss");
         }
 
-        private void AbortThread()
+        private void StopTimer()
         {
             if (_timer != null)
             {
                 _timer.Stop();
                 _timer.Dispose();
             }
-            if (_proxyEnumThread != null && _proxyEnumThread.IsAlive)
-                _proxyEnumThread.Abort();
         }
 
         //Пробуем загрузить страницу или перебрать адреса прокси
@@ -52,16 +52,35 @@ namespace BetfredParserForms
             this.InvokeEx(() => TaskbarProgress.SetState(Handle, TaskbarStates.Indeterminate));
             proxyEnumStatusLabel.Text = string.Format("Попытка соединиться через {0}.", _proxies[0].Address);
             //Если удалось загрузить через первый прокси.
-            if (LoadPage()) return;
+            var result = LoadPage();
+            if (!result.IsNullOrEmpty())
+            {
+                //Завершаем потоки.
+                StopTimer();
+                this.InvokeEx(() => StartParsing(result));
+                return;
+            }
             this.InvokeEx(() => TaskbarProgress.SetState(Handle, TaskbarStates.Normal));
             //Если не удалось — начинается перебор адресов.
             var proxyEnum = new ProxyEnumerator(
                 _proxies, new Uri("http://www.betfred.com"));
             proxyEnum.ProxyFound += ProxyEnum_ProxyFound;
             proxyEnum.NextProxy += ProxyEnum_NextProxy;
+            proxyEnum.ProxyNotFound += ProxyEnum_ProxyNotFound;
             proxyEnum.EnumProxies();
             proxyEnum.ProxyFound -= ProxyEnum_ProxyFound;
             proxyEnum.NextProxy -= ProxyEnum_NextProxy;
+            proxyEnum.ProxyNotFound -= ProxyEnum_ProxyNotFound;
+        }
+
+        private void ProxyEnum_ProxyNotFound(object sender, EventArgs eventArgs)
+        {
+            StopTimer();
+            this.InvokeEx(
+                () =>
+                {
+                    proxyEnumStatusLabel.Text = "Соединение не удалось.";
+                });
         }
 
         //Формат столбцов таблицы
@@ -104,9 +123,9 @@ namespace BetfredParserForms
         }
 
         //Загрузка страницы
-        private bool LoadPage()
+        private string LoadPage()
         {
-            var req = (HttpWebRequest) WebRequest.Create("http://webmon9.betfred.com/numbers/results/index.asp");
+            var req = (HttpWebRequest)WebRequest.Create("http://webmon9.betfred.com/numbers/results/index.asp");
             req.ContentType = "application/x-www-form-urlencoded";
             req.Method = "POST";
             req.Proxy = _proxies[0];
@@ -133,14 +152,13 @@ namespace BetfredParserForms
                 var resp = (HttpWebResponse)req.GetResponse();
                 using (var stream = new StreamReader(resp.GetResponseStream()))
                 {
-                    StartParsing(stream.ReadToEnd());
+                    return stream.ReadToEnd();
                 }
             }
             catch (WebException)
             {
-                return false;
+                return string.Empty;
             }
-            return true;
         }
 
         private void loadResultsButton_Click(object sender, EventArgs e)
@@ -163,7 +181,7 @@ namespace BetfredParserForms
 
         protected override void OnClosed(EventArgs e)
         {
-            AbortThread();
+            StopTimer();
             base.OnClosed(e);
         }
 
@@ -187,7 +205,13 @@ namespace BetfredParserForms
             var p = _proxies[e.Index];
             _proxies.RemoveAt(e.Index);
             _proxies.Insert(0, p);
-            LoadPage();
+            //Завершаем потоки.
+            StopTimer();
+            var result = LoadPage();
+            if (!result.IsNullOrEmpty())
+            {
+                this.InvokeEx(() => StartParsing(result));
+            }
         }
 
         //Переписываем список прокси. Последний успешный прокси записывается первым.
@@ -209,8 +233,6 @@ namespace BetfredParserForms
         //Прокси найден. Страница получена. Начинаем парсить.
         private void StartParsing(string html)
         {
-            //Завершаем поток поиска прокси.
-            AbortThread();
             imageStatusLabel.Visible = true;
             proxyEnumStatusLabel.Text = string.Format("Соединение удалось через {0}.", _proxies[0].Address);
             TaskbarProgress.SetState(Handle, TaskbarStates.Indeterminate);
@@ -226,6 +248,12 @@ namespace BetfredParserForms
             loadResultsButton.Enabled = true;
             TaskbarProgress.SetState(Handle, TaskbarStates.NoProgress);
             SaveProxies();
+        }
+
+        protected virtual void OnPageLoaded()
+        {
+            var handler = PageLoaded;
+            if (handler != null) handler(this, EventArgs.Empty);
         }
     }
 }

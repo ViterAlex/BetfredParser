@@ -12,6 +12,7 @@ namespace BetfredParserForms
     {
         private readonly List<WebProxy> _proxies;
         public event EventHandler<ProxyEnumeratorEventArgs> ProxyFound;
+        public event EventHandler ProxyNotFound;
         public event EventHandler<ProxyEnumeratorEventArgs> NextProxy;
         private readonly Uri _uri;
         public WebProxy GoodProxy { get; private set; }
@@ -32,6 +33,7 @@ namespace BetfredParserForms
                 if (ConnectViaProxy(proxy))
                     break;
             }
+            OnProxyNotFound();
         }
 
         //Соединение через определённый прокси.
@@ -39,13 +41,14 @@ namespace BetfredParserForms
         {
             var req = (HttpWebRequest)WebRequest.Create(_uri);
             req.Proxy = proxy;
+            req.ContentType = "application/x-www-form-urlencoded";
             req.Method = "POST";
             try
             {
                 //пробуем подключиться.
-                using (var stream = new StreamWriter(req.GetRequestStream()))
-                {
-                }
+                //using (var stream = new StreamWriter(req.GetRequestStream()))
+                //{
+                //}
                 var resp = (HttpWebResponse)req.GetResponse();
                 using (var stream = new StreamReader(resp.GetResponseStream()))
                 {
@@ -57,10 +60,6 @@ namespace BetfredParserForms
             catch (WebException)
             {
                 Debug.WriteLine("Wrong: {0}", proxy.Address);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine(ex.Message);
             }
             return false;
         }
@@ -76,6 +75,12 @@ namespace BetfredParserForms
         {
             EventHandler<ProxyEnumeratorEventArgs> handler = NextProxy;
             if (handler != null) handler(this, e);
+        }
+
+        protected virtual void OnProxyNotFound()
+        {
+            var handler = ProxyNotFound;
+            if (handler != null) handler(this, EventArgs.Empty);
         }
     }
 }
